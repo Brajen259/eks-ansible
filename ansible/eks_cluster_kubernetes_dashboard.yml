@@ -1,0 +1,30 @@
+---
+- name: Create the Kubernetes Dashboard
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - shell
+  tasks:
+    - name: Apply the Kubernetes Dashboard file
+      shell: 'kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended/kubernetes-dashboard.yaml'
+    - name: Apply the Heapster file
+      shell: 'kubectl apply -f ../eks/heapster.yaml'
+    - name: Apply the InfluxDB file
+      shell: 'kubectl apply -f ../eks/influxdb.yaml'
+    - name: Apply the Heapster RBAC file
+      shell: 'kubectl apply -f ../eks/heapster-rbac.yaml'
+    - name: Apply the EKS Admin file
+      shell: 'kubectl apply -f ../eks/eks_admin.yaml'
+    - name: Get the kube-system secret for eks-admin
+      shell: "kubectl -n kube-system get secret | grep eks-admin | awk '{print $1}'"
+      register: output
+    - set_fact:
+        eks_admin_secret: '{{ output["stdout"] }}'
+    - name: Retrieve Kubernetes dashboard authentication token
+      shell: "kubectl -n kube-system describe secret {{ eks_admin_secret }} | grep token: | awk '{print $2}'"
+      register: output
+    - set_fact:
+        eks_admin_token: '{{ output["stdout"] }}'
+    - debug:
+        var: eks_admin_token

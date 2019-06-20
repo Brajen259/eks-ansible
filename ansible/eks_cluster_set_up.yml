@@ -1,0 +1,16 @@
+---
+- name: Set up the EKS Cluster
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - shell
+  vars_files:
+    - ./secret.yml
+  tasks:
+    - name: Authenticate using `aws-iam-authenticator`
+      shell: 'aws-iam-authenticator token -i {{ eks_cluster_name }}'
+    - name: Update the kubeconfig configuration
+      shell: 'aws eks update-kubeconfig --name {{ eks_cluster_name }} --profile {{ aws_profile }}'
+    - name: Get cluster info
+      shell: 'kubectl cluster-info'

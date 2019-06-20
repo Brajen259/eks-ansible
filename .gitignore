@@ -1,0 +1,6 @@
+/.vscode
+/eks/aws_auth_cm.yaml
+/cloudformation/eks_cluster_template.yml
+/cloudformation/output.yaml
+/ansible/secret.yml
+/ansible/password
