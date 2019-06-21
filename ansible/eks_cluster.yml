@@ -1,18 +1,4 @@
 ---
-- name: Crear los templates
-  hosts: local
-  connection: local
-  gather_facts: no
-  tags:
-    - templates
-  vars_files:
-    - ./secret.yml
-  tasks:
-    - name: Create the eks_cluster_template.yml file
-      template:
-        src: './templates/eks_cluster_template.yml'
-        dest: '../cloudformation/eks_cluster_template.yml'
-
 - name: Crear/Destruir el cluster de EKS con CloudFormation
   hosts: local
   connection: local
@@ -26,16 +12,28 @@
       cloudformation:
         aws_access_key: '{{ aws_access_key }}'
         aws_secret_key: '{{ aws_secret_key }}'
-        region: 'us-east-1'
+        region: '{{ aws_region }}'
         stack_name: '{{ eks_cluster_name }}'
         state: '{{ eks_cluster_state }}'
         template: '../cloudformation/eks_cluster_template.yml'
         disable_rollback: true
+        template_parameters:
+          EKSClusterName: '{{ eks_cluster_name }}'
+          EKSClusterVersion: '{{ eks_cluster_kubernetes_version }}'
+          EKSClusterNodeAutoScalingGroupMinSize: '{{ eks_cluster_node_auto_scaling_group_min_size }}'
+          EKSClusterNodeAutoScalingGroupMaxSize: '{{ eks_cluster_node_auto_scaling_group_max_size }}'
+          EKSClusterNodeAutoScalingGroupDesiredCapacity: '{{ eks_cluster_node_auto_scaling_group_desired_capacity }}'
+          EKSClusterNodeVolumeSize: '{{ eks_cluster_node_volume_size }}'
+          EKSClusterNodeImageId: '{{ eks_cluster_node_image_id }}'
+          EKSClusterNodeInstanceType: '{{ eks_cluster_node_instance_type }}'
+          EKSClusterNodeKeyName: '{{ eks_cluster_node_key_name }}'
+          EKSClusterEnvironment: '{{ eks_cluster_environment }}'
+          EKSClusterNodeMemoryReseved: '{{ eks_cluster_node_memory_reserved }}'
         tags:
           Name: '{{ eks_cluster_name }}'
           Project: '{{ eks_cluster_name }}'
       register: output
-    - name: Guardar salida
+    - name: Guardar salida de Cloudformation
       copy:
         content: '{{ output | to_nice_yaml }}'
         dest: '../cloudformation/output.yaml'

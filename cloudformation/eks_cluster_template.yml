@@ -5,39 +5,53 @@ Parameters:
   EKSClusterName:
     Description: Nombre del cluster de EKS
     Type: String
-    Default: {{ eks_cluster_name }}
+    Default: kubernetes-demo
   EKSClusterVersion:
     Description: Versión del cluster de EKS
     Type: String
-    Default: {{ 1.11 | default('latest') }}
+    Default: latest
     AllowedValues:
       - "1.10"
       - "1.11"
       - "1.12"
+      - "1.13"
       - "latest"
   EKSClusterNodeAutoScalingGroupMinSize:
     Type: Number
     Description: Minimum size of Node Group ASG.
-    Default: {{ eks_cluster_auto_scaling_group_size | default(1) }}
+    Default: 1
   EKSClusterNodeAutoScalingGroupMaxSize:
     Type: Number
     Description: Maximum size of Node Group ASG. Set to at least 1 greater than NodeAutoScalingGroupDesiredCapacity.
-    Default: {{ eks_cluster_auto_scaling_group_max_size | default(4) }}
+    Default: 4
   EKSClusterNodeAutoScalingGroupDesiredCapacity:
     Type: Number
     Description: Desired capacity of Node Group ASG.
-    Default: {{ eks_cluster_auto_scaling_group_desired_capacity | default(1) }}
+    Default: 2
   EKSClusterNodeVolumeSize:
     Type: Number
-    Description: Node volume size
-    Default: {{ eks_cluster_node_volume_size | default(20) }}
-  EKSClusterNodeGroupName:
-    Description: Unique identifier for the Node Group.
+    Description: Node volume size.
+    Default: 20
+  EKSClusterNodeImageId:
     Type: String
-    Default: {{ eks_cluster_node_group_name }}
+    Description: Node image id.
+  EKSClusterNodeInstanceType:
+    Type: String
+    Description: Node instance type.
+  EKSClusterNodeKeyName:
+    Type: String
+    Description: Node ssh key name.
+  EKSClusterEnvironment:
+    Type: String
+    Description: EKS Cluster environment.
+    Default: development
+  EKSClusterNodeMemoryReseved:
+    Type: String
+    Description: Memory reserved for kubelet on nodes.
+    Default: 0.2Gi
 Resources:
   # --- AWS EKS Cluster Role
-  EKSServiceRole:
+  EKSClusterAdminInstanceNode:
     Type: AWS::IAM::Role
     Properties: 
       AssumeRolePolicyDocument: 
@@ -53,7 +67,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
         - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
-      RoleName: !Sub "EKSServiceRole-${AWS::StackName}"
+      RoleName: !Sub "EKSClusterAdminInstanceNode-${EKSClusterName}"
   # --- AWS EKS Cluster Node Instance Role
   EKSClusterNodeInstanceRole:
     Type: AWS::IAM::Role
@@ -86,18 +100,18 @@ Resources:
       CidrBlock: 10.0.0.0/16
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterVPC-${AWS::StackName}"
+          Value: !Sub "EKSClusterVPC-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
   # --- AWS EKS VPC Internet Gateway
   EKSClusterVPCInternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterVPCInternetGateway-${AWS::StackName}"
+          Value: !Sub "EKSClusterVPCInternetGateway-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
   # --- AWS EKS Cluster VPC Internet Gateway Attachment
   EKSClusterVPCInternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -109,27 +123,27 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: 10.0.0.0/21
       AvailabilityZone: "us-east-1a"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPublicSubnetA-${AWS::StackName}"
+          Value: !Sub "EKSClusterPublicSubnetA-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
   # --- AWS EKS Public Subnet B
   EKSClusterPublicSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: 10.0.8.0/21
       AvailabilityZone: "us-east-1b"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPublicSubnetB-${AWS::StackName}"
+          Value: !Sub "EKSClusterPublicSubnetB-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/elb'
           Value: ''
   # --- AWS EKS Public Subnet C
@@ -137,15 +151,15 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.3.0/24
+      CidrBlock: 10.0.16.0/21
       AvailabilityZone: "us-east-1c"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPublicSubnetC-${AWS::StackName}"
+          Value: !Sub "EKSClusterPublicSubnetC-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/elb'
           Value: ''
   # --- AWS EKS Public Route Table
@@ -155,11 +169,11 @@ Resources:
       VpcId: !Ref EKSClusterVPC
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPublicRouteTable-${AWS::StackName}"
+          Value: !Sub "EKSClusterPublicRouteTable-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/elb'
           Value: ''
   # --- AWS EKS Public Subnet A Association
@@ -193,15 +207,15 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.11.0/24
+      CidrBlock: 10.0.32.0/19
       AvailabilityZone: "us-east-1a"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPrivateSubnetA-${AWS::StackName}"
+          Value: !Sub "EKSClusterPrivateSubnetA-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/internal-elb'
           Value: ''
   # --- AWS EKS Private Subnet B
@@ -209,15 +223,15 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.12.0/24
+      CidrBlock: 10.0.64.0/19
       AvailabilityZone: "us-east-1b"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPrivateSubnetB-${AWS::StackName}"
+          Value: !Sub "EKSClusterPrivateSubnetB-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/internal-elb'
           Value: ''
   # --- AWS EKS Private Subnet C
@@ -225,15 +239,15 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref EKSClusterVPC
-      CidrBlock: 10.0.13.0/24
+      CidrBlock: 10.0.96.0/19
       AvailabilityZone: "us-east-1c"
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPrivateSubnetC-${AWS::StackName}"
+          Value: !Sub "EKSClusterPrivateSubnetC-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: KubernetesCluster
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
         - Key: 'kubernetes.io/role/internal-elb'
           Value: ''
   # --- AWS EKS Private Route Table
@@ -243,9 +257,9 @@ Resources:
       VpcId: !Ref EKSClusterVPC
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterPrivateRouteTable-${AWS::StackName}"
+          Value: !Sub "EKSClusterPrivateRouteTable-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
   # --- AWS EKS Private Subnet A Association
   EKSClusterPrivateRouteTableSubnetAAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -273,9 +287,9 @@ Resources:
       VpcId: !Ref EKSClusterVPC
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterSecurityGroup-${AWS::StackName}"
+          Value: !Sub "EKSClusterSecurityGroup-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
   # --- AWS EKS Cluster Node Security Group
   EKSClusterNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -285,10 +299,10 @@ Resources:
       VpcId: !Ref EKSClusterVPC
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterNodeSecurityGroup-${AWS::StackName}"
+          Value: !Sub "EKSClusterNodeSecurityGroup-${EKSClusterName}"
         - Key: Project
-          Value: {{ eks_cluster_name }}
-        - Key: !Sub "kubernetes.io/cluster/${AWS::StackName}"
+          Value: !Ref EKSClusterName
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
           Value: 'owned'
   # --- AWS Cluster Security Group configuration
   EKSClusterNodeSecurityGroupIngress:
@@ -357,9 +371,9 @@ Resources:
     Properties:
       AssociatePublicIpAddress: 'true'
       IamInstanceProfile: !Ref EKSClusterNodeInstanceProfile
-      ImageId: {{ eks_cluster_node_image_id }}
-      InstanceType: {{ eks_cluster_node_instance_type }}
-      KeyName: {{ eks_cluster_node_key_name }}
+      ImageId: !Ref EKSClusterNodeImageId
+      InstanceType: !Ref EKSClusterNodeInstanceType
+      KeyName: !Ref EKSClusterNodeKeyName
       SecurityGroups:
         - !Ref EKSClusterNodeSecurityGroup
       BlockDeviceMappings:
@@ -372,12 +386,74 @@ Resources:
         Fn::Base64:
           !Sub |
             #!/bin/bash
-            set -o xtrace
-            /etc/eks/bootstrap.sh {{ eks_cluster_name }}
-            /opt/aws/bin/cfn-signal --exit-code $? \
-                     --stack  ${AWS::StackName} \
-                     --resource NodeGroup  \
-                     --region ${AWS::Region}
+ 
+            # Sysctl changes
+            ## Disable IPv6
+            cat <<EOF > /etc/sysctl.d/10-disable-ipv6.conf
+            # disable ipv6 config
+            net.ipv6.conf.all.disable_ipv6 = 1
+            net.ipv6.conf.default.disable_ipv6 = 1
+            net.ipv6.conf.lo.disable_ipv6 = 1
+            EOF
+            
+            ## Kube network optimisation.
+            ## Stolen from this guy: https://blog.codeship.com/running-1000-containers-in-docker-swarm/
+            cat <<EOF > /etc/sysctl.d/99-kube-net.conf
+            # Have a larger connection range available
+            net.ipv4.ip_local_port_range=1024 65000
+            
+            # Reuse closed sockets faster
+            net.ipv4.tcp_tw_reuse=1
+            net.ipv4.tcp_fin_timeout=15
+            
+            # The maximum number of "backlogged sockets".  Default is 128.
+            net.core.somaxconn=4096
+            net.core.netdev_max_backlog=4096
+            
+            # 16MB per socket - which sounds like a lot,
+            # but will virtually never consume that much.
+            net.core.rmem_max=16777216
+            net.core.wmem_max=16777216
+            
+            # Various network tunables
+            net.ipv4.tcp_max_syn_backlog=20480
+            net.ipv4.tcp_max_tw_buckets=400000
+            net.ipv4.tcp_no_metrics_save=1
+            net.ipv4.tcp_rmem=4096 87380 16777216
+            net.ipv4.tcp_syn_retries=2
+            net.ipv4.tcp_synack_retries=2
+            net.ipv4.tcp_wmem=4096 65536 16777216
+            #vm.min_free_kbytes=65536
+            
+            # Connection tracking to prevent dropped connections (usually issue on LBs)
+            net.netfilter.nf_conntrack_max=262144
+            net.ipv4.netfilter.ip_conntrack_generic_timeout=120
+            net.netfilter.nf_conntrack_tcp_timeout_established=86400
+            
+            # ARP cache settings for a highly loaded docker swarm
+            net.ipv4.neigh.default.gc_thresh1=8096
+            net.ipv4.neigh.default.gc_thresh2=12288
+            net.ipv4.neigh.default.gc_thresh3=16384
+            EOF
+            
+            systemctl restart systemd-sysctl.service
+            
+            ## DNS change to limit the 'search' path
+            echo "; generated by bootstrap.sh" > /var/lib/kubelet/resolv.conf
+            
+            if [[ $(ec2-metadata --instance-type) =~ 'large' ]]; then
+                mem_reserved=1Gi
+            else
+                mem_reserved=0.5Gi
+            fi
+            
+            /etc/eks/bootstrap.sh ${EKSClusterName} \
+              --kubelet-extra-args \
+                  "--node-labels=cluster=${EKSClusterName},nodegroup=EKSClusterNodeGroup-${EKSClusterName},environment=${EKSClusterEnvironment} \
+                  --resolv-conf=/var/lib/kubelet/resolv.conf \
+                  --kube-reserved cpu=250m,memory=${EKSClusterNodeMemoryReseved},ephemeral-storage=1Gi \
+                  --system-reserved cpu=250m,memory=0.2Gi,ephemeral-storage=1Gi \
+                  --eviction-hard memory.available<500Mi,nodefs.available<10%"
   # --- AWS EKS Cluster Node Group
   EKSClusterNodeGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -392,12 +468,12 @@ Resources:
         - !Ref EKSClusterPublicSubnetC
       Tags:
         - Key: Name
-          Value: !Sub "EKSClusterNodeGroup-${AWS::StackName}"
+          Value: !Sub "EKSClusterNodeGroup-${EKSClusterName}"
           PropagateAtLaunch: 'true'
         - Key: Project
-          Value: {{ eks_cluster_name }}
+          Value: !Ref EKSClusterName
           PropagateAtLaunch: 'true'
-        - Key: !Sub 'kubernetes.io/cluster/{{ eks_cluster_name }}'
+        - Key: !Sub 'kubernetes.io/cluster/${EKSClusterName}'
           Value: 'owned'
           PropagateAtLaunch: 'true'
     UpdatePolicy:
@@ -411,7 +487,7 @@ Resources:
     Properties:
       Name: !Ref EKSClusterName
       Version: !Ref EKSClusterVersion
-      RoleArn: !GetAtt EKSServiceRole.Arn
+      RoleArn: !GetAtt EKSClusterAdminInstanceNode.Arn
       ResourcesVpcConfig:
         SecurityGroupIds:
         - !Ref EKSClusterSecurityGroup
@@ -435,6 +511,9 @@ Outputs:
   EKSClusterNodeInstanceRoleArn:
     Description: The node instance role
     Value: !GetAtt EKSClusterNodeInstanceRole.Arn
+  EKSClusterAdminInstanceNodeArn:
+    Description: The admin instance role
+    Value: !GetAtt EKSClusterAdminInstanceNode.Arn
   EKSClusterNodeSecurityGroupID:
     Description: The security group for the node group
     Value: !Ref EKSClusterNodeSecurityGroup

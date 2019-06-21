@@ -7,12 +7,32 @@
     - templates
   vars_files:
     - ../cloudformation/output.yaml
+    - ./secret.yml
   tasks:
     - set_fact:
         eks_cluster_node_instance_role_arn: '{{ stack_outputs["EKSClusterNodeInstanceRoleArn"] }}'
-    - name: Create the aws_auth_cm.yaml file
-      template:
-        src: './templates/aws_auth_cm.yaml'
-        dest: '../eks/aws_auth_cm.yaml'
+        eks_cluster_admin_instance_role_arn: '{{ stack_outputs["EKSClusterAdminInstanceNodeArn"] }}'
     - name: Add nodes to the cluster
-      shell: 'kubectl create -f ../eks/aws_auth_cm.yaml'
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: aws-auth
+            namespace: kube-system
+          data:
+            mapRoles: |
+              - rolearn: '{{ eks_cluster_node_instance_role_arn }}'
+                username: 'system:node:{% raw %}{{EC2PrivateDNSName}}{% endraw %}'
+                groups:
+                  - system:bootstrappers
+                  - system:nodes
+              - rolearn: '{{ eks_cluster_admin_instance_role_arn }}'
+                username: cluster-admin
+                groups:
+                  - system:masters
+    - name: Get cluster info
+      k8s_facts:
+        api_version: v1
+        kind: nodes

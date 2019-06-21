@@ -8,10 +8,6 @@ eks_cluster_down: ANSIBLE_CONFIG=./ansible.cfg
 eks_cluster_down: 
 	ansible-playbook eks_cluster.yml --extra-vars "eks_cluster_state=absent" --tags "cloudformation"
 
-templates: ANSIBLE_CONFIG=./ansible.cfg
-templates:
-	ansible-playbook eks_cluster.yml --tags "templates"
-
 eks_cluster_add_nodes: ANSIBLE_CONFIG=./ansible.cfg
 eks_cluster_add_nodes:
 	ansible-playbook eks_cluster_add_nodes.yml -v

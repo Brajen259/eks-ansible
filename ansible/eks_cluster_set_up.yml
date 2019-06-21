@@ -13,4 +13,6 @@
     - name: Update the kubeconfig configuration
       shell: 'aws eks update-kubeconfig --name {{ eks_cluster_name }} --profile {{ aws_profile }}'
     - name: Get cluster info
-      shell: 'kubectl cluster-info'
+      k8s_facts:
+        api_version: v1
+        kind: pods
