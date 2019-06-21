@@ -9,38 +9,78 @@
     - ../cloudformation/output.yaml
     - ./secret.yml
   tasks:
+    - set_fact:
+        demo_application_state: '{{ kubernetes_dashboard_state | default("present") }}'
+    - name: Download the Kubernetes Dashboard definition file
+      get_url:
+        url: "https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/recommended/kubernetes-dashboard.yaml"
+        dest: "../eks/kubernetes-dashboard.yaml"
     - name: Apply the Kubernetes Dashboard definition
       k8s:
-        state: present
+        state: '{{ kubernetes_dashboard_state }}'
         src: '../eks/kubernetes-dashboard.yaml'
+    - name: Download the Heapster definition file
+      get_url:
+        url: "https://raw.githubusercontent.com/kubernetes/heapster/master/deploy/kube-config/influxdb/heapster.yaml"
+        dest: "../eks/heapster.yaml"
     - name: Apply the Heapster definition
       k8s:
-        state: present
+        state: '{{ kubernetes_dashboard_state }}'
         src: '../eks/heapster.yaml'
+    - name: Download the InfluxDB definition file
+      get_url:
+        url: "https://raw.githubusercontent.com/kubernetes/heapster/master/deploy/kube-config/influxdb/influxdb.yaml"
+        dest: "../eks/influxdb.yaml"
     - name: Apply the InfluxDB definition
       k8s:
-        state: present
+        state: '{{ kubernetes_dashboard_state }}'
         src: '../eks/influxdb.yaml'
+    - name: Download the Heapster Role Binding
+      get_url:
+        url: "https://raw.githubusercontent.com/kubernetes/heapster/master/deploy/kube-config/rbac/heapster-rbac.yaml"
+        dest: '../eks/heapster-rbac.yaml'
     - name: Apply the Heapster RBAC definition
       k8s:
-        state: present
+        state: '{{ kubernetes_dashboard_state }}'
         src: '../eks/heapster-rbac.yaml'
     - name: Apply the EKS Admin definition
       k8s:
-        state: present
-        src: '../eks/eks_admin.yaml'
+        state: '{{ kubernetes_dashboard_state }}'
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: eks-admin
+            namespace: kube-system
+    - k8s:
+        state: '{{ kubernetes_dashboard_state }}'
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1beta1
+          kind: ClusterRoleBinding
+          metadata:
+            name: eks-admin
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - kind: ServiceAccount
+            name: eks-admin
+            namespace: kube-system
     - name: Get the kube-system secret for eks-admin
       k8s_facts:
         namespace: kube-system
         kind: secret
       register: secrets
+      when: state == "present"
       no_log: True
     - name: Find the eks-admin secret
       set_fact:
         token: '{{ item["data"]["token"] | b64decode }}'
       loop: '{{ secrets["resources"] }}'
       when: >
-        item["metadata"] is defined 
+        state == "present"
+          and item["metadata"] is defined 
           and item["metadata"]["annotations"] is defined
           and item["metadata"]["annotations"]["kubernetes.io/service-account.name"] is defined
           and item["metadata"]["annotations"]["kubernetes.io/service-account.name"] == "eks-admin"
@@ -48,3 +88,4 @@
     - name: Print the Kubernetes Dashboard token
       debug:
         var: token
+      when: state == "present"

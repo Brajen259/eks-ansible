@@ -4,7 +4,7 @@
   connection: local
   gather_facts: no
   tags:
-    - templates
+    - k8s
   vars_files:
     - ../cloudformation/output.yaml
     - ./secret.yml

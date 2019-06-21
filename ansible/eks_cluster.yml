@@ -37,3 +37,8 @@
       copy:
         content: '{{ output | to_nice_yaml }}'
         dest: '../cloudformation/output.yaml'
+    - set_fact:
+        kubernetes_dashboard_state: '{{ eks_cluster_state }}'
+        kubernetes_metrics_service_state: '{{ eks_cluster_state }}'
+        demo_application: '{{ eks_cluster_state }}'
+    

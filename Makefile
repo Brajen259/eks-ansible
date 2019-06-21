@@ -12,11 +12,23 @@ eks_cluster_add_nodes:
 eks_cluster_set_up:
 	cd ansible && make eks_cluster_set_up && cd ..
 
-eks_cluster_kubernetes_dashboard:
-	cd ansible && make eks_cluster_kubernetes_dashboard && cd ..
+eks_cluster_kubernetes_dashboard_up:
+	cd ansible && make eks_cluster_kubernetes_dashboard_up && cd ..
 
-eks_cluster_ecsdemo:
-	cd ansible && make eks_cluster_ecsdemo && cd ..
+eks_cluster_kubernetes_dashboard_down:
+	cd ansible && make eks_cluster_kubernetes_dashboard_down && cd ..
+
+eks_cluster_demo_application_up:
+	cd ansible && make eks_cluster_demo_application_up && cd ..
+
+eks_cluster_demo_application_down:
+	cd ansible && make eks_cluster_demo_application_down && cd ..
+
+eks_cluster_kubernetes_metric_service_up:
+	cd ansible && make eks_cluster_kubernetes_metric_service_up && cd ..
+
+eks_cluster_kubernetes_metric_service_down:
+	cd ansible && make eks_cluster_kubernetes_metric_service_down && cd ..
 
 edit_secret_vars:
 	cd ansible && ansible-vault edit secret.yml && cd ..

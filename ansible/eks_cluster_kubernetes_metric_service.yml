@@ -1,0 +1,26 @@
+---
+- name: Create the Kubernetes Metrics service
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - k8s
+  vars_files:
+    - ../cloudformation/output.yaml
+    - ./secret.yml
+  tasks:
+    - set_fact:
+        kubernetes_metrics_service_state: '{{ kubernetes_metrics_service_state | default("present") }}'
+    - include_role:
+        name: k8s_http
+      vars:
+        file_url: '{{ item }}'
+        state: '{{ kubernetes_metrics_service_state }}'
+      loop:
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/aggregated-metrics-reader.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/auth-delegator.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/auth-reader.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/metrics-apiservice.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/metrics-server-deployment.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/metrics-server-service.yaml
+        - https://raw.githubusercontent.com/kubernetes-incubator/metrics-server/master/deploy/1.8%2B/resource-reader.yaml

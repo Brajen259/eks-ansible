@@ -1,0 +1,12 @@
+- name: Get the file
+  get_url:
+    url: '{{ file_url }}'
+    dest: '{{ temporary_file_path }}'
+- name: Apply the file
+  k8s:
+    state: '{{ state }}'
+    src: '{{ temporary_file_path }}'
+- name: Delete tmp file
+  file:
+    state: absent
+    path: '{{ temporary_file_path }}'

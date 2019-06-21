@@ -1,0 +1,164 @@
+---
+- name: Run a DEMO application on the cluster
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - k8s
+  vars_files:
+    - ../cloudformation/output.yaml
+    - ./secret.yml
+  tasks:
+    - set_fact:
+        demo_application_state: '{{ demo_application_state | default("present") }}'
+    - name: Create the Redis Master ReplicationController
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: ReplicationController
+          apiVersion: v1
+          metadata:
+            name: redis-master
+            labels:
+              app: redis
+              role: master
+          spec:
+            replicas: 1
+            selector:
+              app: redis
+              role: master
+            template:
+              metadata:
+                labels:
+                  app: redis
+                  role: master
+              spec:
+                containers:
+                  - name: redis-master
+                    image: 'redis:2.8.23'
+                    ports:
+                      - name: redis-server
+                        containerPort: 6379
+    - name: Create the Redis Master Service
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: Service
+          apiVersion: v1
+          metadata:
+            name: redis-master
+            labels: 
+              app: redis
+              role: master
+          spec:
+            ports:
+              - port: 6379
+                targetPort: redis-server
+            selector:
+              app: redis
+              role: master
+    - name: Create the Redis Slave ReplicationController
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: ReplicationController
+          apiVersion: v1
+          metadata:
+            name: redis-slave
+            labels:
+              app: redis
+              role: slave
+          spec:
+            replicas: 2
+            selector:
+              app: redis
+              role: slave
+            template:
+              metadata:
+                labels:
+                  app: redis
+                  role: slave
+              spec:
+                containers:
+                  - name: redis-slave
+                    image: k8s.gcr.io/redis-slave:v2
+                    ports:
+                      - name: redis-server
+                        containerPort: 6379
+    - name: Create the Redis Slave Service
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: Service
+          apiVersion: v1
+          metadata:
+            name: redis-slave
+            labels:
+              app: redis
+              role: slave
+          spec:
+            ports:
+              - port: 6379
+                targetPort: redis-server
+            selector:
+              app: redis
+              role: slave
+    - name: Create the GuestBook ReplicationController
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: ReplicationController
+          apiVersion: v1
+          metadata:
+            name: guestbook
+            labels:
+              app: guestbook
+          spec:
+            replicas: 2
+            selector:
+              app: guestbook
+            template:
+              metadata:
+                labels:
+                  app: guestbook
+              spec:
+                containers:
+                  - name: guestbook
+                    image: 'k8s.gcr.io/guestbook:v3'
+                    ports:
+                      - name: http-server
+                        containerPort: 3000
+    - name: Create the GuestBook Service
+      k8s:
+        state: '{{ demo_application_state }}'
+        namespace: default
+        definition:
+          kind: Service
+          apiVersion: v1
+          metadata:
+            name: guestbook
+            labels:
+              app: guestbook
+          spec:
+            ports:
+              - port: 3000
+                targetPort: http-server
+            selector:
+              app: guestbook
+            type: LoadBalancer
+    - k8s_facts:
+        namespace: default
+        kind: services
+        label_selectors:
+          - app = guestbook
+      when: demo_application_state == "present"
+      no_log: '{{ demo_application_state == "present" }}'
+      register: service
+    - set_fact:
+        guestbook_ingress: '{{ service.resources[0].status.loadBalancer.ingress[0].hostname }}'
+      when: demo_application_state == "present"
