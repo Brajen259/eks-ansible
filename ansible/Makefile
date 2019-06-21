@@ -35,3 +35,6 @@ eks_cluster_kubernetes_metric_service_up:
 
 eks_cluster_kubernetes_metric_service_down:
 	ansible-playbook eks_cluster_kubernetes_metric_service.yml -v --extra-vars "kubernetes_metrics_service_state=absent"
+
+server_build:
+	ansible-playbook server_build.yml -v

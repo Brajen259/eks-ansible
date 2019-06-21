@@ -1,0 +1,42 @@
+---
+- name: Create the NodeJS server image
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - docker
+  vars_files:
+    - ./secret.yml
+  tasks:
+    - name: Create the ECR Repository
+      ecs_ecr: 
+        aws_access_key: '{{ aws_access_key }}'
+        aws_secret_key: '{{ aws_secret_key }}'
+        name: '{{ server_image_organization }}/{{ server_image_name }}'
+      register: ecr
+      no_log: True
+    - debug:
+        var: ecr
+    - name: docker login (must `--no-include-email`)
+      shell: "$(aws ecr get-login --region {{ aws_region }} --no-include-email --profile {{ aws_profile }})"
+      args:
+        executable: /bin/bash
+    - name: Build docker image
+      docker_image: 
+        path: '../server'
+        name: '{{ server_image_organization }}/{{ server_image_name }}'
+        tag: "{{ server_image_version }}"
+        source: build
+    - name: Add tag
+      docker_image:
+        name: "{{ server_image_organization }}/{{ server_image_name }}:{{ server_image_version }}"
+        repository: "{{ ecr.repository.repositoryUri }}"
+        tag: "{{ ecr.repository.repositoryUri }}:{{ server_image_version }}"
+        source: local
+    - name: push image to ecr
+      docker_image:
+        name: "{{ ecr.repository.repositoryUri }}:{{ server_image_version }}"
+        push: yes
+    
+
+    

@@ -1,0 +1,10 @@
+{
+  "name": "kubernetes_node_http_server",
+  "version": "1.0.0",
+  "description": "Kubernetes NodeJS HTTP Server",
+  "author": "Guzmán Monné - CONATEL S.A.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}

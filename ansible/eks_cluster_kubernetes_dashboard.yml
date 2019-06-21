@@ -72,14 +72,14 @@
         namespace: kube-system
         kind: secret
       register: secrets
-      when: state == "present"
+      when: kubernetes_dashboard_state == "present"
       no_log: True
     - name: Find the eks-admin secret
       set_fact:
         token: '{{ item["data"]["token"] | b64decode }}'
       loop: '{{ secrets["resources"] }}'
       when: >
-        state == "present"
+        kubernetes_dashboard_state == "present"
           and item["metadata"] is defined 
           and item["metadata"]["annotations"] is defined
           and item["metadata"]["annotations"]["kubernetes.io/service-account.name"] is defined
@@ -88,4 +88,4 @@
     - name: Print the Kubernetes Dashboard token
       debug:
         var: token
-      when: state == "present"
+      when: kubernetes_dashboard_state == "present"
