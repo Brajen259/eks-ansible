@@ -1,6 +1,11 @@
 .PHONY: eks_cluster_up eks_cluster_down templates
 
 all: ANSIBLE_CONFIG=./ansible.cfg
+
+eks_up: eks_cluster_up eks_cluster_set_up eks_cluster_add_nodes eks_cluster_kubernetes_dashboard_up
+
+eks_down: eks_cluster_down
+
 eks_cluster_up: 
 	ansible-playbook eks_cluster.yml --extra-vars "eks_cluster_state=present" -v
 
