@@ -3,3 +3,4 @@
 /cloudformation/output.yaml
 /ansible/secret.yml
 /ansible/password
+/server/ecr_output.yaml

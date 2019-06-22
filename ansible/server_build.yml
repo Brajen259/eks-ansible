@@ -15,15 +15,15 @@
         name: '{{ server_image_organization }}/{{ server_image_name }}'
       register: ecr
       no_log: True
-    - debug:
-        var: ecr
     - name: docker login (must `--no-include-email`)
       shell: "$(aws ecr get-login --region {{ aws_region }} --no-include-email --profile {{ aws_profile }})"
       args:
         executable: /bin/bash
     - name: Build docker image
       docker_image: 
-        path: '../server'
+        build:
+          path: '../server'
+          pull: yes
         name: '{{ server_image_organization }}/{{ server_image_name }}'
         tag: "{{ server_image_version }}"
         source: build
@@ -37,6 +37,11 @@
       docker_image:
         name: "{{ ecr.repository.repositoryUri }}:{{ server_image_version }}"
         push: yes
+        source: local
+    - name: Guardar salida de ECR
+      copy:
+        content: '{{ ecr | to_nice_yaml }}'
+        dest: '../server/ecr_output.yaml'
     
 
     

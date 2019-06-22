@@ -1,6 +1,9 @@
-.PHONY: eks_cluster_up eks_cluster_down templates
+.PHONY: applications_namespace server_deployment server_build eks_up eks_down eks_cluster_up eks_cluster_down eks_cluster_add_nodes eks_cluster_set_up eks_cluster_kubernetes_dashboard_up eks_cluster_kubernetes_dashboard_down eks_cluster_demo_application_up eks_cluster_demo_application_down eks_cluster_kubernetes_metric_service_up eks_cluster_kubernetes_metric_service_down
 
-all: ANSIBLE_CONFIG=./ansible.cfg
+ANSIBLE_CONFIG=./ansible.cfg
+
+applications_namespace:
+	ansible-playbook applications_namespace.yml -v
 
 eks_up: eks_cluster_up eks_cluster_set_up eks_cluster_add_nodes eks_cluster_kubernetes_dashboard_up
 
@@ -38,3 +41,6 @@ eks_cluster_kubernetes_metric_service_down:
 
 server_build:
 	ansible-playbook server_build.yml -v
+
+server_deployment:
+	ansible-playbook server_deployment.yml -v

@@ -1,0 +1,54 @@
+---
+- name: Deploys the NodeJS server to Kubernetes
+  hosts: local
+  connection: local
+  gather_facts: no
+  tags:
+    - kubernetes
+  vars_files:
+    - ./secret.yml
+    - ../server/ecr_output.yaml
+  tasks:
+    - name: Create the NodeJS server Deployment
+      k8s:
+        state: '{{ server_state }}'
+        namespace: '{{ applications_namespace_name }}'
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: '{{ server_deployment_name }}'
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: '{{ server_name }}'
+            template:
+              metadata:
+                labels:
+                  app: '{{ server_name }}'
+              spec:
+                containers:
+                  - name: '{{ server_deployment_container_name }}'
+                    image: '{{ repository.repositoryUri }}:{{ server_image_version }}'
+                    ports:
+                      - name: http-server
+                        containerPort: 3000
+    - name: Create the NodeJS server Service
+      k8s:
+        state: '{{ server_state }}'
+        namespace: '{{ applications_namespace_name }}'
+        definition:
+          kind: Service
+          apiVersion: v1
+          metadata:
+            name: '{{ server_service_name }}'
+            labels:
+              app: '{{ server_name }}'
+          spec:
+            ports:
+              - port: 3000
+                targetPort: http-server
+            selector:
+              app: '{{ server_name }}'
+            type: LoadBalancer
